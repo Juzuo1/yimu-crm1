@@ -8,8 +8,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { NOTIFY_TYPE_LABELS } from '@/lib/constants';
-import dayjs from 'dayjs';
 
 const { Sider, Header, Content } = Layout;
 const { Text } = Typography;

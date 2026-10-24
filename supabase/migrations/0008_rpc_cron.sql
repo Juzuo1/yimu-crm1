@@ -91,15 +91,18 @@ begin
 
   -- 收集本次回收的客户（临时表，供后续两条插入引用）
   create temp table _recycled on commit drop as
-    update customers c
-       set in_pool = true, pool_entered_at = now(), owner_id = null,
-           claimed_at = null, protection_until = null, next_follow_up_at = null
-      from org_settings s
-     where c.org_id = s.org_id
-       and c.owner_id is not null and not c.in_pool
-       and coalesce(c.last_follow_up_at, c.created_at) < now() - (s.recycle_days || ' days')::interval
-       and (c.protection_until is null or c.protection_until < now())
-     returning c.id, c.org_id, c.owner_id, s.recycle_days;
+    with recycled as (
+      update customers c
+         set in_pool = true, pool_entered_at = now(), owner_id = null,
+             claimed_at = null, protection_until = null, next_follow_up_at = null
+        from org_settings s
+       where c.org_id = s.org_id
+         and c.owner_id is not null and not c.in_pool
+         and coalesce(c.last_follow_up_at, c.created_at) < now() - (s.recycle_days || ' days')::interval
+         and (c.protection_until is null or c.protection_until < now())
+       returning c.id, c.org_id, c.owner_id, s.recycle_days
+    )
+    select * from recycled;
 
   insert into pool_records (org_id, customer_id, action, from_user_id, reason, created_by)
   select org_id, id, 'recycle', owner_id,

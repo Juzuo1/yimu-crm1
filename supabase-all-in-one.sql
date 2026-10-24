@@ -113,7 +113,7 @@ returns trigger language plpgsql security definer set search_path = public as $$
 declare
   v_invite pending_invites;
   v_org_id uuid;
-  v_org_count int;
+  v_profile_count int;
 begin
   -- 情况 1：被邀请加入已有团队
   select * into v_invite from pending_invites
@@ -128,11 +128,16 @@ begin
     return new;
   end if;
 
-  -- 情况 2：系统第一个用户，自动建组织当 owner
-  select count(*) into v_org_count from organizations;
-  if v_org_count = 0 then
-    insert into organizations (name) values ('我的团队') returning id into v_org_id;
-    insert into org_settings (org_id) values (v_org_id);
+  -- 情况 2：系统内没有任何成员 → 视为全新初始化，本人成为 owner
+  -- （按 profiles 而非 organizations 判断：用户被删除后组织可能残留，
+  --   只要没有成员就允许重新接管，避免"组织孤儿"把所有人挡在门外）
+  select count(*) into v_profile_count from profiles;
+  if v_profile_count = 0 then
+    select id into v_org_id from organizations order by created_at limit 1;
+    if v_org_id is null then
+      insert into organizations (name) values ('我的团队') returning id into v_org_id;
+      insert into org_settings (org_id) values (v_org_id);
+    end if;
     insert into profiles (id, org_id, name, email, role)
     values (new.id, v_org_id,
             coalesce(new.raw_user_meta_data->>'name', split_part(new.email, '@', 1)),
@@ -140,7 +145,7 @@ begin
     return new;
   end if;
 
-  -- 情况 3：无邀请且已有组织 → 拒绝
+  -- 情况 3：无邀请且已有成员 → 拒绝
   raise exception '未受邀请的邮箱无法注册，请联系团队管理员在「成员管理」中邀请你';
 end $$;
 

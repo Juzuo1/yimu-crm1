@@ -10,8 +10,11 @@
 -- 0001 扩展与枚举类型
 -- =============================================================
 
-create extension if not exists pg_trgm;    -- 查重模糊匹配
-create extension if not exists pgcrypto;   -- gen_random_uuid
+create extension if not exists pg_trgm;        -- 查重模糊匹配
+create extension if not exists pgcrypto;       -- gen_random_uuid
+create extension if not exists supabase_vault; -- 邮箱授权码加密存储
+create extension if not exists pg_cron;        -- 定时任务（公海回收/未回复提醒/重算评分）
+create extension if not exists pg_net;         -- 定时调用 Edge Function（邮件同步，可选）
 
 -- 用户角色（多团队预留）
 create type user_role as enum ('owner', 'admin', 'manager', 'sales');
@@ -925,13 +928,13 @@ begin
   if exists (select 1 from pg_extension where extname = 'pg_cron') then
     -- 每日 02:00 回收超期客户
     perform cron.schedule('recycle-dormant-customers', '0 2 * * *',
-      $$ select recycle_dormant_customers(); $$);
+      $cmd$ select recycle_dormant_customers(); $cmd$);
     -- 每日 09:00 未回复提醒
     perform cron.schedule('remind-unreplied', '0 9 * * *',
-      $$ select remind_unreplied(); $$);
+      $cmd$ select remind_unreplied(); $cmd$);
     -- 每周一 03:00 重算评分
     perform cron.schedule('recompute-scores', '0 3 * * 1',
-      $$ select recompute_customer_scores(); $$);
+      $cmd$ select recompute_customer_scores(); $cmd$);
   end if;
 end $$;
 

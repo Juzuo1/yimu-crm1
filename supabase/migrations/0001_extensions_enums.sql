@@ -2,8 +2,11 @@
 -- 0001 扩展与枚举类型
 -- =============================================================
 
-create extension if not exists pg_trgm;    -- 查重模糊匹配
-create extension if not exists pgcrypto;   -- gen_random_uuid
+create extension if not exists pg_trgm;        -- 查重模糊匹配
+create extension if not exists pgcrypto;       -- gen_random_uuid
+create extension if not exists supabase_vault; -- 邮箱授权码加密存储
+create extension if not exists pg_cron;        -- 定时任务（公海回收/未回复提醒/重算评分）
+create extension if not exists pg_net;         -- 定时调用 Edge Function（邮件同步，可选）
 
 -- 用户角色（多团队预留）
 create type user_role as enum ('owner', 'admin', 'manager', 'sales');

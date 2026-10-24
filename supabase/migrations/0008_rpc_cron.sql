@@ -342,13 +342,13 @@ begin
   if exists (select 1 from pg_extension where extname = 'pg_cron') then
     -- 每日 02:00 回收超期客户
     perform cron.schedule('recycle-dormant-customers', '0 2 * * *',
-      $$ select recycle_dormant_customers(); $$);
+      $cmd$ select recycle_dormant_customers(); $cmd$);
     -- 每日 09:00 未回复提醒
     perform cron.schedule('remind-unreplied', '0 9 * * *',
-      $$ select remind_unreplied(); $$);
+      $cmd$ select remind_unreplied(); $cmd$);
     -- 每周一 03:00 重算评分
     perform cron.schedule('recompute-scores', '0 3 * * 1',
-      $$ select recompute_customer_scores(); $$);
+      $cmd$ select recompute_customer_scores(); $cmd$);
   end if;
 end $$;
 

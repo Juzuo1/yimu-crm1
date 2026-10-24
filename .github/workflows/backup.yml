@@ -1,0 +1,34 @@
+# 每周数据库备份（免费层无自动备份，pg_dump 存为 Actions artifact，保留 90 天）
+name: Weekly DB Backup
+
+on:
+  schedule:
+    - cron: '0 18 * * 0'
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    container:
+      image: postgres:16
+    steps:
+      - name: 安装 PostgreSQL 17 客户端（兼容连接）
+        run: |
+          apt-get update && apt-get install -y postgresql-client-17 || \
+          apt-get install -y postgresql-client
+
+      - name: 执行 pg_dump
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          mkdir -p backup
+          pg_dump "$DB_URL" --no-owner --no-privileges --clean --if-exists \
+            > backup/yimu-crm-$(date +%Y%m%d).sql
+          ls -lh backup/
+
+      - name: 上传备份 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_number }}
+          path: backup/
+          retention-days: 90

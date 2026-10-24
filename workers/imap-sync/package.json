@@ -1,0 +1,13 @@
+{
+  "name": "yimu-crm-imap-sync",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "IMAP 邮件同步 Worker：拉取各邮箱新邮件，调用 ingest_emails RPC 入库",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "imapflow": "^1.0.164"
+  }
+}

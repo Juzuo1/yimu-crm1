@@ -1,0 +1,18 @@
+# 每 3 天探活一次 Supabase，防止免费项目因 7 天无活动被自动暂停
+# 任何一次 REST 成功即视为活动
+name: Supabase Keepalive
+
+on:
+  schedule:
+    - cron: '0 20 */3 * *'
+  workflow_dispatch:
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: REST 探活
+        run: |
+          curl -sf "${{ secrets.VITE_SUPABASE_URL }}/rest/v1/organizations?select=id&limit=1" \
+            -H "apikey: ${{ secrets.VITE_SUPABASE_ANON_KEY }}" \
+            && echo "keepalive OK" || echo "keepalive FAILED"

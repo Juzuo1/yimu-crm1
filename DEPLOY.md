@@ -17,14 +17,15 @@ Supabase 是我们的免费数据库 + 登录系统，相当于系统的"云端�
    - **Pricing Plan**：保持 **Free**
 3. 点击 **Create new project**，等待 1-2 分钟出现项目界面。
 
-### 记下两个关键信息
+### 记下两个关键信息（新版 Supabase 界面）
 
-1. 点击左下角齿轮 **Project Settings** → **API**：
-   - **Project URL**（形如 `https://abcdefgh.supabase.co`）→ 复制保存
-   - **anon public** key（一长串字符）→ 复制保存
-2. 同时记下 **Project URL 中的项目 ref**（就是 `abcdefgh` 那一段，备份和邮件同步要用）。
+1. **anon key**：点左侧菜单 **CONFIGURATION → API Keys**：
+   - 页面上的 **Publishable key**（`sb_publishable_` 开头）→ 复制保存（这就是 anon key）
+   - 如果页面同时显示旧版 **anon public** key，复制哪个都可以
+2. **Project URL**：在 **Settings → General** 里找到 **Project ID**（形如 `abcdefgh`），拼成 `https://abcdefgh.supabase.co` 即可。Project ID 这一段同时也是备份和邮件同步要用的「项目 ref」，一起记下来。
+3. **service_role key**：同在 **API Keys** 页面，**Secret keys** 区域的 `sb_secret_` 开头密钥（或旧版 service_role key）→ 复制保存。⚠️ 这个 key 权限极大，只能放 GitHub Secrets，绝不能发给别人或写进代码。
 
-> 这两个信息等会儿要填到 GitHub 里。anon key 是设计上公开的，不用担心泄露，数据安全由数据库规则保护。
+> 这些信息等会儿要填到 GitHub 里。anon/publishable key 是设计上公开的，不用担心泄露，数据安全由数据库规则保护。
 
 ---
 
@@ -83,8 +84,8 @@ git push -u origin main
 
    | Name | Value |
    |---|---|
-   | `SUPABASE_DB_URL` | `postgresql://postgres.你的项目ref:数据库密码@aws-0-singapore.pooler.supabase.com:5432/postgres`（密码用第一步保存的；Region 不同则地址不同，不确定就在 Supabase → Project Settings → Database → Connection string → Session pooler 里复制） |
-   | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API 里的 **service_role** key（⚠️ 这个 key 权限极大，只能放 Secrets，绝不能发给别人或写进代码） |
+   | `SUPABASE_DB_URL` | 点 Supabase 项目顶部的绿色 **Connect** 按钮，复制 Session pooler 连接串（形如 `postgresql://postgres.项目ref:密码@aws-0-区域.pooler.supabase.com:5432/postgres`，密码用第一步保存的）。东京区域是 `aws-0-ap-northeast-1.pooler.supabase.com` |
+   | `SUPABASE_SERVICE_ROLE_KEY` | 第一步在 **API Keys** 页面记下的 Secret key（⚠️ 权限极大，只能放 Secrets，绝不能发给别人或写进代码） |
 
 5. 添加完成后，去仓库 **Actions** 页面，应该能看到 **Deploy to GitHub Pages** 正在运行（黄点）。等 1-2 分钟变成绿色 ✓。
 6. 访问地址：`https://你的GitHub用户名.github.io/yimu-crm/` —— 看到登录页就成功了！

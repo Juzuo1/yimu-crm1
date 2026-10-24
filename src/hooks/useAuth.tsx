@@ -7,7 +7,8 @@ interface AuthState {
   profile: Profile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
+  /** 返回 true 表示已直接登录；false 表示需要先到邮箱完成验证 */
+  signUp: (email: string, password: string) => Promise<boolean>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -56,8 +57,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) throw new Error(translateAuthError(error.message));
+    // session 为 null 说明 Supabase 开启了邮箱验证，需要用户先点验证邮件
+    return !!data.session;
   };
 
   const signOut = async () => {

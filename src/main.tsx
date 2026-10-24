@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { App as AntdApp, ConfigProvider } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
-import { BrowserRouter } from 'react-router-dom';
+import { HashRouter } from 'react-router-dom';
 import { AuthProvider } from '@/hooks/useAuth';
 import { theme } from '@/theme';
 import App from './App';
@@ -20,11 +20,11 @@ createRoot(document.getElementById('root')!).render(
     <ConfigProvider theme={theme} locale={zhCN}>
       <QueryClientProvider client={queryClient}>
         <AntdApp>
-          <BrowserRouter>
+          <HashRouter>
             <AuthProvider>
               <App />
             </AuthProvider>
-          </BrowserRouter>
+          </HashRouter>
         </AntdApp>
       </QueryClientProvider>
     </ConfigProvider>

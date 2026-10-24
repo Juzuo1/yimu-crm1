@@ -17,8 +17,12 @@ export default function LoginPage() {
       if (tab === 'login') {
         await signIn(values.email, values.password);
       } else {
-        await signUp(values.email, values.password);
-        message.success('注册成功！如邮箱在邀请名单中将自动加入团队');
+        const loggedIn = await signUp(values.email, values.password);
+        if (loggedIn) {
+          message.success('注册成功，欢迎加入！');
+        } else {
+          message.success('注册成功！请先到你的邮箱点击验证链接，再回来登录');
+        }
       }
     } catch (err) {
       message.error((err as Error).message);

@@ -84,54 +84,59 @@ export default function DashboardPage() {
     );
   }
 
+  const kpis: { label: string; value: number; color?: string }[] = [
+    { label: '客户总数', value: summary.total_customers },
+    { label: '我的客户', value: summary.my_customers },
+    { label: '公海客户', value: summary.pool_customers, color: '#FF6B35' },
+    { label: '今日待跟进', value: summary.due_today, color: '#a8580f' },
+    { label: '已逾期', value: summary.overdue, color: '#b32424' },
+    { label: '近30天跟进', value: (summary.followup_ranking ?? []).reduce((s, r) => s + r.count, 0) },
+  ];
+
   return (
-    <PageContainer title={`工作台 · ${profile?.name ?? ''}`}>
-      <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col xs={12} sm={8} lg={4}>
-          <Card size="small"><Statistic title="客户总数" value={summary.total_customers} valueStyle={{ color: '#0A2540' }} /></Card>
-        </Col>
-        <Col xs={12} sm={8} lg={4}>
-          <Card size="small"><Statistic title="我的客户" value={summary.my_customers} valueStyle={{ color: '#0A2540' }} /></Card>
-        </Col>
-        <Col xs={12} sm={8} lg={4}>
-          <Card size="small"><Statistic title="公海客户" value={summary.pool_customers} valueStyle={{ color: '#FF6B35' }} /></Card>
-        </Col>
-        <Col xs={12} sm={8} lg={4}>
-          <Card size="small"><Statistic title="今日待跟进" value={summary.due_today} valueStyle={{ color: '#faad14' }} /></Card>
-        </Col>
-        <Col xs={12} sm={8} lg={4}>
-          <Card size="small"><Statistic title="已逾期" value={summary.overdue} valueStyle={{ color: '#ff4d4f' }} /></Card>
-        </Col>
-        <Col xs={12} sm={8} lg={4}>
-          <Card size="small"><Statistic title="近30天跟进" value={(summary.followup_ranking ?? []).reduce((s, r) => s + r.count, 0)} valueStyle={{ color: '#0A2540' }} /></Card>
-        </Col>
+    <PageContainer
+      title="工作台"
+      subtitle={`${dayjs().format('YYYY 年 M 月 D 日')} · 你好，${profile?.name ?? ''}`}
+    >
+      <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+        {kpis.map((k) => (
+          <Col xs={12} sm={8} lg={4} key={k.label}>
+            <div className="stat-card">
+              <div className="stat-label">{k.label}</div>
+              <div className="stat-value" style={k.color ? { color: k.color } : undefined}>{k.value}</div>
+            </div>
+          </Col>
+        ))}
       </Row>
 
-      <Row gutter={16} style={{ marginBottom: 16 }}>
+      <Row gutter={[12, 12]} style={{ marginBottom: 12 }}>
         <Col xs={24} lg={12}>
-          <Card size="small" title="客户增长趋势（近12个月）">
+          <div className="ui-card">
+            <div className="section-title" style={{ marginBottom: 12 }}>客户增长趋势（近 12 个月）</div>
             <ReactECharts option={trendOption} style={{ height: 260 }} />
-          </Card>
+          </div>
         </Col>
         <Col xs={24} lg={12}>
-          <Card size="small" title="今日待跟进">
+          <div className="ui-card">
+            <div className="section-title" style={{ marginBottom: 8 }}>今日待跟进</div>
             {dueToday.length ? (
               <List
                 dataSource={dueToday}
                 renderItem={(c) => (
                   <List.Item
+                    style={{ padding: '10px 0', borderBottom: '1px solid #f0f3f7' }}
                     actions={[
-                      <Button type="link" size="small" key="d" onClick={() => navigate(`/customers/${c.id}`)}>详情</Button>,
+                      <Button type="link" size="small" key="d" onClick={() => navigate(`/customers/${c.id}`)}>去跟进</Button>,
                     ]}
                   >
                     <List.Item.Meta
-                      title={
-                        <>
-                          <span className="grade-dot" style={{ background: GRADE_COLORS[c.grade] }} />
-                          {c.company_name}
-                        </>
+                      avatar={<div className="avatar-brand-sm">{c.company_name.slice(0, 2).toUpperCase()}</div>}
+                      title={<span style={{ fontSize: 13, fontWeight: 500, color: '#0A2540' }}>{c.company_name}</span>}
+                      description={
+                        <span style={{ fontSize: 12, color: '#9aa7b8' }}>
+                          {c.next_follow_up_at ? dayjs(c.next_follow_up_at).format('HH:mm') : '-'} · {c.country ?? ''}
+                        </span>
                       }
-                      description={`计划跟进时间：${c.next_follow_up_at ? dayjs(c.next_follow_up_at).format('HH:mm') : '-'} · ${c.country ?? ''}`}
                     />
                   </List.Item>
                 )}
@@ -139,34 +144,38 @@ export default function DashboardPage() {
             ) : (
               <Empty description="今日没有待跟进客户" />
             )}
-          </Card>
+          </div>
         </Col>
       </Row>
 
-      <Row gutter={16}>
+      <Row gutter={[12, 12]}>
         <Col xs={24} sm={12} lg={6}>
-          <Card size="small" title="客户等级分布">
-            <ReactECharts option={pieOption(summary.grade_dist, undefined, GRADE_COLORS)} style={{ height: 240 }} />
-          </Card>
+          <div className="ui-card">
+            <div className="section-title" style={{ marginBottom: 8 }}>客户等级分布</div>
+            <ReactECharts option={pieOption(summary.grade_dist, undefined, GRADE_COLORS)} style={{ height: 230 }} />
+          </div>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card size="small" title="客户来源分布">
-            <ReactECharts option={pieOption(summary.source_dist, SOURCE_LABELS)} style={{ height: 240 }} />
-          </Card>
+          <div className="ui-card">
+            <div className="section-title" style={{ marginBottom: 8 }}>客户来源分布</div>
+            <ReactECharts option={pieOption(summary.source_dist, SOURCE_LABELS)} style={{ height: 230 }} />
+          </div>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card size="small" title="客户状态分布">
-            <ReactECharts option={pieOption(summary.status_dist, STATUS_LABELS, STATUS_COLORS)} style={{ height: 240 }} />
-          </Card>
+          <div className="ui-card">
+            <div className="section-title" style={{ marginBottom: 8 }}>客户状态分布</div>
+            <ReactECharts option={pieOption(summary.status_dist, STATUS_LABELS, STATUS_COLORS)} style={{ height: 230 }} />
+          </div>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card size="small" title="业务员跟进排行（近30天）">
+          <div className="ui-card">
+            <div className="section-title" style={{ marginBottom: 8 }}>业务员跟进排行（近 30 天）</div>
             {(summary.followup_ranking ?? []).length ? (
-              <ReactECharts option={rankOption} style={{ height: 240 }} />
+              <ReactECharts option={rankOption} style={{ height: 230 }} />
             ) : (
               <Empty description="暂无跟进数据" />
             )}
-          </Card>
+          </div>
         </Col>
       </Row>
     </PageContainer>

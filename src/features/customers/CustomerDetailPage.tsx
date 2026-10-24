@@ -1,25 +1,54 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  Card, Descriptions, Tabs, Tag, Space, Button, Rate, Timeline, Empty, App,
-  Table, Modal, Select, Popconfirm, Statistic, Row, Col, Progress,
+  Card, Descriptions, Tabs, Space, Button, Rate, Empty, App,
+  Table, Modal, Select, Popconfirm, Progress,
 } from 'antd';
 import {
   EditOutlined, PlusOutlined, ShareAltOutlined, UserSwitchOutlined,
-  RollbackOutlined, DownloadOutlined,
+  RollbackOutlined, DownloadOutlined, ArrowLeftOutlined,
 } from '@ant-design/icons';
 import { supabase } from '@/lib/supabase';
 import type {
-  Customer, Contact, TimelineItem, EmailMessage, PoolRecord, CustomerShare, Profile,
+  Customer, TimelineItem, EmailMessage, PoolRecord, CustomerShare, Profile,
 } from '@/lib/database.types';
 import {
-  GRADE_COLORS, GRADE_LABELS, STATUS_LABELS, STATUS_COLORS, SOURCE_LABELS,
+  STATUS_LABELS, SOURCE_LABELS,
   COMPANY_TYPE_LABELS, COMPANY_SCALE_LABELS, FOLLOWUP_TYPE_LABELS, POOL_ACTION_LABELS,
 } from '@/lib/constants';
 import { useAuth } from '@/hooks/useAuth';
 import ContactsCard from './ContactsCard';
 import FollowUpFormModal from '@/features/followups/FollowUpFormModal';
 import dayjs from 'dayjs';
+
+const GRADE_CHIP: Record<string, string> = {
+  S: 'chip chip-danger',
+  A: 'chip chip-warn',
+  B: 'chip chip-brand',
+  C: 'chip',
+  D: 'chip',
+};
+const STATUS_CHIP: Record<string, string> = {
+  active: 'chip chip-ok',
+  dormant: 'chip chip-warn',
+  lost: 'chip chip-danger',
+};
+
+function initials(name: string) {
+  const clean = name.replace(/[^\p{L}\p{N}]/gu, '');
+  return clean.slice(0, 2).toUpperCase() || '--';
+}
+
+function Kpi({ label, value, danger }: { label: string; value: React.ReactNode; danger?: boolean }) {
+  return (
+    <div>
+      <div style={{ fontSize: 12, color: '#9aa7b8' }}>{label}</div>
+      <div style={{ fontSize: 14, color: danger ? '#b32424' : '#0A2540', marginTop: 3, fontWeight: 500 }}>
+        {value}
+      </div>
+    </div>
+  );
+}
 
 export default function CustomerDetailPage() {
   const { id } = useParams();
@@ -127,64 +156,65 @@ export default function CustomerDetailPage() {
   };
 
   if (loading || !customer) {
-    return <div className="page-container"><Card loading /></div>;
+    return <div className="page-container"><Card loading style={{ borderRadius: 12 }} /></div>;
   }
 
-  const timelineItems = timeline.map((t) => {
-    const color = t.kind === 'email' ? 'blue' : t.kind === 'followup' ? 'green' : 'orange';
-    const label =
-      t.kind === 'email' ? '📧 邮件' :
-      t.kind === 'followup' ? `💬 ${FOLLOWUP_TYPE_LABELS[t.title] ?? t.title}` :
-      `🔄 ${POOL_ACTION_LABELS[t.title] ?? t.title}`;
-    return {
-      color,
-      children: (
-        <div>
-          <Space>
-            <span style={{ color: '#8c8c8c', fontSize: 12 }}>
-              {dayjs(t.occurred_at).format('YYYY-MM-DD HH:mm')}
-            </span>
-            <Tag>{label}</Tag>
-          </Space>
-          {t.kind === 'email' && (
-            <>
-              <div style={{ marginTop: 2, fontWeight: 500 }}>{t.title}</div>
-              {t.summary && <div style={{ fontSize: 12, color: '#8c8c8c' }}>{t.summary}</div>}
-            </>
-          )}
-          {t.kind === 'followup' && <div style={{ marginTop: 2, whiteSpace: 'pre-wrap' }}>{t.summary}</div>}
-          {t.kind === 'pool' && <div style={{ marginTop: 2, fontSize: 12, color: '#8c8c8c' }}>{t.summary}</div>}
-        </div>
-      ),
-    };
-  });
+  const ownerName = members.find((m) => m.id === customer.owner_id)?.name ?? '—';
+  const followupCount = timeline.filter((t) => t.kind === 'followup').length;
+  const overdue = customer.next_follow_up_at
+    ? dayjs(customer.next_follow_up_at).isBefore(dayjs())
+    : false;
 
   return (
     <div className="page-container">
-      <Card
-        style={{ marginBottom: 16 }}
-        title={
-          <Space>
-            <span className="grade-dot" style={{ background: GRADE_COLORS[customer.grade] }} />
-            <span style={{ color: '#0A2540', fontSize: 16 }}>{customer.company_name}</span>
-            {customer.company_name_en && (
-              <span style={{ color: '#8c8c8c', fontSize: 13, fontWeight: 400 }}>{customer.company_name_en}</span>
-            )}
-            <Tag color={GRADE_COLORS[customer.grade]}>{customer.grade} 级</Tag>
-            <Tag color={STATUS_COLORS[customer.status]}>{STATUS_LABELS[customer.status]}</Tag>
-            {customer.in_pool ? <Tag color="blue">公海</Tag> : <Tag color="green">私海</Tag>}
-          </Space>
-        }
-        extra={
+      <Button
+        type="text"
+        icon={<ArrowLeftOutlined />}
+        onClick={() => navigate('/customers')}
+        style={{ color: '#9aa7b8', marginBottom: 10, paddingLeft: 0 }}
+      >
+        返回客户列表
+      </Button>
+
+      <div className="ui-card" style={{ marginBottom: 14 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 14, minWidth: 0 }}>
+            <div className="avatar-brand" style={{ width: 48, height: 48, borderRadius: 12, fontSize: 16 }}>
+              {initials(customer.company_name)}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 17, fontWeight: 600, color: '#0A2540', letterSpacing: '-0.3px' }}>
+                {customer.company_name}
+              </div>
+              <div style={{ fontSize: 13, color: '#7d8a9c', marginTop: 2 }}>
+                {[customer.country, customer.industry,
+                  COMPANY_SCALE_LABELS[customer.company_scale]].filter(Boolean).join(' · ') || customer.company_name_en || '—'}
+              </div>
+              <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                <span className={GRADE_CHIP[customer.grade] ?? 'chip'}>{customer.grade} 级</span>
+                <span className={STATUS_CHIP[customer.status] ?? 'chip'}>{STATUS_LABELS[customer.status]}</span>
+                <span className="chip">{SOURCE_LABELS[customer.source]}</span>
+                {customer.in_pool
+                  ? <span className="chip chip-brand">公海</span>
+                  : <span className="chip chip-ok">私海</span>}
+              </div>
+            </div>
+          </div>
+
           <Space wrap>
-            <Button icon={<PlusOutlined />} type="primary" onClick={() => setFollowUpOpen(true)} disabled={!canWrite}>
+            <Button
+              icon={<PlusOutlined />}
+              type="primary"
+              onClick={() => setFollowUpOpen(true)}
+              disabled={!canWrite}
+            >
               记录跟进
             </Button>
             <Button icon={<EditOutlined />} onClick={() => navigate(`/customers/${customer.id}/edit`)} disabled={!canWrite}>
               编辑
             </Button>
             {customer.in_pool && (
-              <Button icon={<DownloadOutlined />} onClick={handleClaim}>领取客户</Button>
+              <Button icon={<DownloadOutlined />} onClick={handleClaim}>领取</Button>
             )}
             {!customer.in_pool && (customer.owner_id === profile?.id || isManager) && (
               <Popconfirm title="退回后将释放归属，确定退回公海？" onConfirm={handleRelease}>
@@ -192,101 +222,111 @@ export default function CustomerDetailPage() {
               </Popconfirm>
             )}
             {isManager && !customer.in_pool && (
-              <Button icon={<UserSwitchOutlined />} onClick={() => setAssignOpen(true)}>分配给</Button>
+              <Button icon={<UserSwitchOutlined />} onClick={() => setAssignOpen(true)}>转交</Button>
             )}
-            <Button icon={<ShareAltOutlined />} onClick={() => setShareOpen(true)}
-              disabled={!isManager && customer.owner_id !== profile?.id}>
+            <Button
+              icon={<ShareAltOutlined />}
+              onClick={() => setShareOpen(true)}
+              disabled={!isManager && customer.owner_id !== profile?.id}
+            >
               共享
             </Button>
           </Space>
-        }
-      >
-        <Row gutter={24}>
-          <Col span={16}>
-            <Descriptions column={2} size="small" bordered>
-              <Descriptions.Item label="官网">{customer.website || '-'}</Descriptions.Item>
-              <Descriptions.Item label="国家/地区">{customer.country || '-'}</Descriptions.Item>
-              <Descriptions.Item label="公司类型">
-                {COMPANY_TYPE_LABELS[customer.company_type]}
-              </Descriptions.Item>
-              <Descriptions.Item label="公司规模">
-                {COMPANY_SCALE_LABELS[customer.company_scale]}
-              </Descriptions.Item>
-              <Descriptions.Item label="行业">{customer.industry || '-'}</Descriptions.Item>
-              <Descriptions.Item label="来源渠道">{SOURCE_LABELS[customer.source]}</Descriptions.Item>
-              <Descriptions.Item label="主营产品" span={2}>
-                {customer.main_products || '-'}
-              </Descriptions.Item>
-              <Descriptions.Item label="地址" span={2}>{customer.address || '-'}</Descriptions.Item>
-              <Descriptions.Item label="最近跟进">
-                {customer.last_follow_up_at ? dayjs(customer.last_follow_up_at).format('YYYY-MM-DD HH:mm') : '-'}
-              </Descriptions.Item>
-              <Descriptions.Item label="下次跟进">
-                {customer.next_follow_up_at ? (
-                  <span style={{ color: dayjs(customer.next_follow_up_at).isBefore(dayjs()) ? '#ff4d4f' : undefined }}>
-                    {dayjs(customer.next_follow_up_at).format('YYYY-MM-DD HH:mm')}
-                  </span>
-                ) : '-'}
-              </Descriptions.Item>
-              <Descriptions.Item label="备注" span={2}>
-                {customer.notes || '-'}
-              </Descriptions.Item>
-            </Descriptions>
-          </Col>
-          <Col span={8}>
-            <Space direction="vertical" size={12} style={{ width: '100%' }}>
-              <div>
-                <div style={{ marginBottom: 4, color: '#8c8c8c' }}>星级</div>
-                <Rate disabled value={customer.star_level} />
-              </div>
-              <div>
-                <div style={{ marginBottom: 4, color: '#8c8c8c' }}>数据完整度</div>
-                <Progress percent={customer.completeness_score ?? 0} strokeColor="#0A2540" />
-              </div>
-              <div>
-                <div style={{ marginBottom: 4, color: '#8c8c8c' }}>活跃度</div>
-                <Progress percent={customer.activity_score ?? 0} strokeColor="#FF6B35" />
-              </div>
-              <Descriptions column={1} size="small">
-                <Descriptions.Item label="紧密度">
-                  {customer.closeness_score ? `${customer.closeness_score} / 5` : '未评分'}
-                </Descriptions.Item>
-                <Descriptions.Item label="匹配度">
-                  {customer.match_score ? `${customer.match_score} / 5` : '未评分'}
-                </Descriptions.Item>
-              </Descriptions>
-            </Space>
-          </Col>
-        </Row>
-      </Card>
+        </div>
+
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
+            gap: 16,
+            marginTop: 16,
+            paddingTop: 14,
+            borderTop: '1px solid #f0f3f7',
+          }}
+        >
+          <Kpi label="负责人" value={customer.in_pool ? '公海' : ownerName} />
+          <Kpi label="往来邮件" value={`${emails.length} 封`} />
+          <Kpi label="跟进次数" value={`${followupCount} 次`} />
+          <Kpi
+            label="最近联系"
+            value={customer.last_follow_up_at ? dayjs(customer.last_follow_up_at).format('MM-DD') : '—'}
+          />
+          <Kpi
+            label="下次跟进"
+            danger={overdue}
+            value={customer.next_follow_up_at
+              ? `${dayjs(customer.next_follow_up_at).format('MM-DD')}${overdue ? '（逾期）' : ''}`
+              : '未设置'}
+          />
+        </div>
+      </div>
 
       <Tabs
         items={[
           {
             key: 'timeline',
             label: `动态时间线（${timeline.length}）`,
-            children: timeline.length ? (
-              <Card>
-                <Timeline items={timelineItems} />
-              </Card>
-            ) : (
-              <Card><Empty description="还没有动态，记录第一条跟进或等待邮件同步" /></Card>
+            children: (
+              <div className="ui-card">
+                {timeline.length ? (
+                  timeline.map((t, i) => {
+                    const color = t.kind === 'email' ? '#378ADD' : t.kind === 'followup' ? '#FF6B35' : '#888780';
+                    const label =
+                      t.kind === 'email' ? '邮件' :
+                      t.kind === 'followup' ? FOLLOWUP_TYPE_LABELS[t.title] ?? t.title :
+                      POOL_ACTION_LABELS[t.title] ?? t.title;
+                    return (
+                      <div className="tl-item" key={t.id ?? i}>
+                        <div className="tl-dot" style={{ background: color }} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: 12, color: '#9aa7b8' }}>
+                              {dayjs(t.occurred_at).format('YYYY-MM-DD HH:mm')}
+                            </span>
+                            <span className="chip" style={{ color, background: `${color}14` }}>{label}</span>
+                          </div>
+                          {t.kind === 'email' && (
+                            <>
+                              <div style={{ marginTop: 4, fontSize: 13, fontWeight: 500, color: '#0A2540' }}>
+                                {t.title}
+                              </div>
+                              {t.summary && (
+                                <div style={{ fontSize: 12, color: '#7d8a9c', marginTop: 2 }}>{t.summary}</div>
+                              )}
+                            </>
+                          )}
+                          {t.kind === 'followup' && (
+                            <div style={{ marginTop: 4, fontSize: 13, whiteSpace: 'pre-wrap', color: '#33445c' }}>
+                              {t.summary}
+                            </div>
+                          )}
+                          {t.kind === 'pool' && (
+                            <div style={{ marginTop: 4, fontSize: 12, color: '#7d8a9c' }}>{t.summary}</div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <Empty description="还没有动态，记录第一条跟进或等待邮件同步" />
+                )}
+              </div>
             ),
           },
           {
             key: 'contacts',
             label: '联系人',
             children: (
-              <Card>
+              <div className="ui-card">
                 <ContactsCard customerId={customer.id} canWrite={!!canWrite} />
-              </Card>
+              </div>
             ),
           },
           {
             key: 'emails',
             label: `往来邮件（${emails.length}）`,
             children: (
-              <Card>
+              <div className="ui-card-compact">
                 {emails.length ? (
                   <Table
                     rowKey="id"
@@ -295,8 +335,11 @@ export default function CustomerDetailPage() {
                     dataSource={emails}
                     columns={[
                       {
-                        title: '方向', dataIndex: 'direction', width: 70,
-                        render: (v: string) => v === 'in' ? <Tag color="blue">收到</Tag> : <Tag color="orange">发出</Tag>,
+                        title: '方向', dataIndex: 'direction', width: 74,
+                        render: (v: string) =>
+                          v === 'in'
+                            ? <span className="chip">收到</span>
+                            : <span className="chip chip-warn">发出</span>,
                       },
                       {
                         title: '时间', dataIndex: 'received_at', width: 150,
@@ -315,14 +358,58 @@ export default function CustomerDetailPage() {
                 ) : (
                   <Empty description="暂无邮件，绑定邮箱后往来邮件将自动同步到这里" />
                 )}
-              </Card>
+              </div>
+            ),
+          },
+          {
+            key: 'detail',
+            label: '档案与评分',
+            children: (
+              <div className="ui-card">
+                <Descriptions column={2} size="small" bordered>
+                  <Descriptions.Item label="官网">{customer.website || '-'}</Descriptions.Item>
+                  <Descriptions.Item label="国家/地区">{customer.country || '-'}</Descriptions.Item>
+                  <Descriptions.Item label="公司类型">{COMPANY_TYPE_LABELS[customer.company_type]}</Descriptions.Item>
+                  <Descriptions.Item label="公司规模">{COMPANY_SCALE_LABELS[customer.company_scale]}</Descriptions.Item>
+                  <Descriptions.Item label="行业">{customer.industry || '-'}</Descriptions.Item>
+                  <Descriptions.Item label="来源渠道">{SOURCE_LABELS[customer.source]}</Descriptions.Item>
+                  <Descriptions.Item label="主营产品" span={2}>{customer.main_products || '-'}</Descriptions.Item>
+                  <Descriptions.Item label="地址" span={2}>{customer.address || '-'}</Descriptions.Item>
+                  <Descriptions.Item label="最近跟进">
+                    {customer.last_follow_up_at ? dayjs(customer.last_follow_up_at).format('YYYY-MM-DD HH:mm') : '-'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="下次跟进">
+                    {customer.next_follow_up_at ? (
+                      <span style={{ color: dayjs(customer.next_follow_up_at).isBefore(dayjs()) ? '#b32424' : undefined }}>
+                        {dayjs(customer.next_follow_up_at).format('YYYY-MM-DD HH:mm')}
+                      </span>
+                    ) : '-'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="备注" span={2}>{customer.notes || '-'}</Descriptions.Item>
+                </Descriptions>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 20, marginTop: 24 }}>
+                  <div>
+                    <div style={{ marginBottom: 6, color: '#7d8a9c', fontSize: 13 }}>星级</div>
+                    <Rate disabled value={customer.star_level} />
+                  </div>
+                  <div>
+                    <div style={{ marginBottom: 6, color: '#7d8a9c', fontSize: 13 }}>数据完整度</div>
+                    <Progress percent={customer.completeness_score ?? 0} strokeColor="#0A2540" />
+                  </div>
+                  <div>
+                    <div style={{ marginBottom: 6, color: '#7d8a9c', fontSize: 13 }}>活跃度</div>
+                    <Progress percent={customer.activity_score ?? 0} strokeColor="#FF6B35" />
+                  </div>
+                </div>
+              </div>
             ),
           },
           {
             key: 'shares',
             label: `共享与归属（${shares.length}）`,
             children: (
-              <Card>
+              <div className="ui-card">
                 <Table
                   rowKey="id"
                   size="small"
@@ -332,7 +419,7 @@ export default function CustomerDetailPage() {
                     { title: '共享给', dataIndex: 'shared.name' },
                     {
                       title: '权限', dataIndex: 'permission',
-                      render: (v: string) => <Tag>{v === 'edit' ? '可编辑' : '仅查看'}</Tag>,
+                      render: (v: string) => <span className="chip">{v === 'edit' ? '可编辑' : '仅查看'}</span>,
                     },
                     {
                       title: '操作', key: 'action',
@@ -345,7 +432,7 @@ export default function CustomerDetailPage() {
                   ]}
                 />
                 <div style={{ marginTop: 24 }}>
-                  <div style={{ marginBottom: 8, color: '#0A2540', fontWeight: 600 }}>归属变动记录</div>
+                  <div className="section-title" style={{ marginBottom: 10 }}>归属变动记录</div>
                   <Table
                     rowKey="id"
                     size="small"
@@ -354,7 +441,7 @@ export default function CustomerDetailPage() {
                     columns={[
                       {
                         title: '动作', dataIndex: 'action',
-                        render: (v: string) => <Tag>{POOL_ACTION_LABELS[v] ?? v}</Tag>,
+                        render: (v: string) => <span className="chip">{POOL_ACTION_LABELS[v] ?? v}</span>,
                       },
                       { title: '原因', dataIndex: 'reason', render: (v: string) => v || '-' },
                       {
@@ -364,7 +451,7 @@ export default function CustomerDetailPage() {
                     ]}
                   />
                 </div>
-              </Card>
+              </div>
             ),
           },
         ]}
